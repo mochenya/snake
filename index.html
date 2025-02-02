@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>定制贪吃蛇</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <style>
+        body { 
+            margin: 0; 
+            padding: 0; 
+            background: #222;
+            touch-action: none;
+        }
+        #configScreen {
+            position: fixed;
+            width: 100vw;
+            height: 100vh;
+            background: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        #gameScreen {
+            display: none;
+        }
+        .upload-btn {
+            margin: 20px;
+            padding: 10px 20px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        canvas {
+            background: #000;
+            touch-action: none;
+        }
+        .controls {
+            position: fixed;
+            bottom: 20px;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            touch-action: none;
+        }
+        .control-btn {
+            width: 60px;
+            height: 60px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            touch-action: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- 配置界面 -->
+    <div id="configScreen">
+        <h2 style="color:white;">定制你的贪吃蛇</h2>
+        <label class="upload-btn">
+            上传蛇头图片 <input type="file" id="headUpload" accept="image/*" hidden>
+        </label>
+        <label class="upload-btn">
+            上传背景图片 <input type="file" id="bgUpload" accept="image/*" hidden>
+        </label>
+        <button class="upload-btn" onclick="startGame()">开始游戏</button>
+    </div>
+
+    <!-- 游戏界面 -->
+    <div id="gameScreen">
+        <canvas id="gameCanvas"></canvas>
+        <div class="controls">
+            <div class="control-btn" ontouchstart="changeDirection('up')">↑</div>
+            <div class="control-btn" ontouchstart="changeDirection('left')">←</div>
+            <div class="control-btn" ontouchstart="changeDirection('down')">↓</div>
+            <div class="control-btn" ontouchstart="changeDirection('right')">→</div>
+        </div>
+    </div>
+
+<script>
+let snake = [], food = {}, dir = 'right';
+let headImg, bgImg;
+let canvas, ctx;
+
+// 初始化游戏
+function initGame() {
+    canvas = document.getElementById('gameCanvas');
+    ctx = canvas.getContext('2d');
+    
+    // 设置全屏画布
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight - 100;
+    
+    // 初始化蛇
+    snake = [{x: 5, y: 5}];
+    generateFood();
+    gameLoop();
+}
+
+// 生成食物
+function generateFood() {
+    food = {
+        x: Math.floor(Math.random() * (canvas.width/20)),
+        y: Math.floor(Math.random() * (canvas.height/20))
+    };
+}
+
+// 游戏循环
+function gameLoop() {
+    moveSnake();
+    
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // 绘制背景
+    if(bgImg) ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
+    
+    // 绘制食物
+    ctx.fillStyle = '#ff0000';
+    ctx.fillRect(food.x*20, food.y*20, 18, 18);
+    
+    // 绘制蛇
+    snake.forEach((seg, index) => {
+        if(index === 0 && headImg) {
+            ctx.drawImage(headImg, seg.x*20, seg.y*20, 20, 20);
+        } else {
+            ctx.fillStyle = '#4CAF50';
+            ctx.fillRect(seg.x*20, seg.y*20, 18, 18);
+        }
+    });
+    
+    setTimeout(gameLoop, 150);
+}
+
+// 移动蛇
+function moveSnake() {
+    let head = {...snake[0]};
+    switch(dir) {
+        case 'up': head.y--; break;
+        case 'down': head.y++; break;
+        case 'left': head.x--; break;
+        case 'right': head.x++; break;
+    }
+    
+    // 碰撞检测
+    if(head.x < 0 || head.x >= canvas.width/20 || 
+       head.y < 0 || head.y >= canvas.height/20 ||
+       snake.some(seg => seg.x === head.x && seg.y === head.y)) {
+        alert('游戏结束！');
+        location.reload();
+    }
+    
+    snake.unshift(head);
+    
+    // 吃食物检测
+    if(head.x === food.x && head.y === food.y) {
+        generateFood();
+    } else {
+        snake.pop();
+    }
+}
+
+// 切换游戏界面
+function startGame() {
+    document.getElementById('configScreen').style.display = 'none';
+    document.getElementById('gameScreen').style.display = 'block';
+    initGame();
+}
+
+// 方向控制
+function changeDirection(newDir) {
+    const opposite = {up:'down', down:'up', left:'right', right:'left'};
+    if(dir !== opposite[newDir]) dir = newDir;
+}
+
+// 处理图片上传
+document.getElementById('headUpload').addEventListener('change', function(e) {
+    let file = e.target.files[0];
+    let reader = new FileReader();
+    reader.onload = function(e) {
+        headImg = new Image();
+        headImg.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+});
+
+document.getElementById('bgUpload').addEventListener('change', function(e) {
+    let file = e.target.files[0];
+    let reader = new FileReader();
+    reader.onload = function(e) {
+        bgImg = new Image();
+        bgImg.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+});
+
+// 键盘控制
+document.addEventListener('keydown', (e) => {
+    const keyMap = {37:'left', 38:'up', 39:'right', 40:'down'};
+    if(keyMap[e.keyCode]) changeDirection(keyMap[e.keyCode]);
+});
+</script>
+</body>
+</html>
